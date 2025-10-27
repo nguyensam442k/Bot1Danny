@@ -1,1 +1,71 @@
+:root{
+  --bg:#0e141b;
+  --card:#121a23;
+  --text:#e6edf3;
+  --muted:#9fb1c1;
+  --acc:#2ea043;
+  --red:#f85149;
+  --yellow:#f2cc60;
+  --blue:#4493f8;
+  --line:#1e2630;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  color:var(--text); background:var(--bg);
+}
+.topbar{
+  display:flex; align-items:center; gap:12px;
+  padding:16px 20px; border-bottom:1px solid var(--line);
+  position:sticky; top:0; background:var(--bg); z-index:10;
+}
+h1{font-size:20px; margin:0}
+button{
+  background:var(--blue); color:#fff; border:none; padding:8px 14px;
+  border-radius:8px; cursor:pointer;
+}
+button.secondary{ background:#263241; color:#c8d1da }
+button.danger{ background:var(--red) }
+button:disabled{ opacity:.6; cursor:not-allowed }
+
+.card{
+  background:var(--card); border:1px solid var(--line);
+  border-radius:14px; padding:16px; margin:16px 20px;
+}
+.grid{
+  display:grid; gap:16px; margin:0 20px 16px;
+  grid-template-columns: repeat(auto-fit,minmax(320px,1fr));
+}
+.pair{ display:flex; align-items:center; gap:10px; margin-bottom:10px }
+.pair .sym{ font-weight:700; font-size:18px }
+.pair .tf{ color:var(--muted); background:#1b2430; padding:3px 8px; border-radius:999px }
+.pair .last{ margin-left:auto; color:var(--muted) }
+
+.row{ display:grid; grid-template-columns: repeat(6,1fr); gap:10px }
+.box{ background:#0f1720; border:1px solid var(--line); border-radius:10px; padding:10px }
+.box .lbl{ color:var(--muted); font-size:12px }
+.box .val{ font-weight:700; margin-top:4px }
+
+.status{ padding:2px 8px; border-radius:10px; display:inline-block }
+.status.buy{ background:#102c18; color:#6ee7b7 }
+.status.sell{ background:#2a1414; color:#fda4af }
+.status.active{ outline:1px dashed #2ea043; }
+
+.targets{
+  display:grid; grid-template-columns: repeat(5,1fr); gap:10px;
+  margin-top:12px; color:var(--muted)
+}
+.actions{ margin-top:10px; display:flex; justify-content:flex-end }
+
+.table-wrap{ overflow:auto }
+table{ width:100%; border-collapse:collapse }
+th,td{ padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap }
+thead th{ background:#0f1720; position:sticky; top:0 }
+tr.total td{ font-weight:700 }
+
+.stats .note{ color:var(--muted); margin-top:-6px; margin-bottom:10px }
+.row-between{ display:flex; align-items:center; justify-content:space-between }
+.history .btns{ display:flex; gap:10px }
 
