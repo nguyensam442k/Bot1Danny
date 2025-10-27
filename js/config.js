@@ -1,72 +1,117 @@
-// Global config + data adapters + small helpers
-window.App = (() => {
-  const CONFIG = {
+// ====== CONFIG & HELPERS ======
+window.App = {
+  CONFIG: {
     defaultExchange: 'binance',
     symbols: ['BTCUSDT','BNBUSDT','ETHUSDT','SOLUSDT'],
     timeframes: ['15m','1h','4h'],
     candlesLimit: 500,
-    risk: { perTradeUSD: 100, leverage: 25 },  // 100u x 25
-    tpSplit: [0.30,0.30,0.40],                 // TP1/TP2/TP3 weights
-    tpR: [0.8, 1.4, 2.0],                      // RR multiples
+    risk: { perTradeUSD: 100, leverage: 25 },   // 100u x 25
+    tpSplit: [0.30,0.30,0.40],                  // TP1/2/3 30/30/40
+    tpR: [0.8, 1.4, 2.0],                       // RR TP1..3
     slR: 1.0,
     ema: [21,50,200],
     rsiPeriod: 14,
     stoch: [14,3],
     atr: 14,
-    ccKey: '' // CryptoCompare key (nếu dùng CCCAGG)
-  };
+    ccKey: ''                                   // CryptoCompare key (nếu dùng)
+  },
 
-  function tfToMs(tf){
+  tfToMs(tf){
     const m = tf.match(/(\d+)([mhdw])/); if(!m) return 60000;
-    const n=+m[1], u=m[2];
-    const k = u==='m'?60000: u==='h'?3600000: u==='d'?86400000: 604800000;
-    return n*k;
-  }
-  function expiryBars(tf){
-    // 15m ~ 4h, 1h ~ 1d, 4h ~ ~6d (bạn đổi nếu muốn)
-    if(tf==='15m') return 16;
-    if(tf==='1h')  return 24;
-    if(tf==='4h')  return 36;
+    const n=+m[1], u=m[2]; const k = u==='m'?60000: u==='h'?3600000: u==='d'?86400000: 604800000; return n*k;
+  },
+  expiryBars(tf){
+    if(tf==='15m') return 16;   // ~4h
+    if(tf==='1h')  return 24;   // ~1d
+    if(tf==='4h')  return 36;   // ~6d
     return 24;
-  }
-  function qtyFromNotional(price){
-    const notional = CONFIG.risk.perTradeUSD * CONFIG.risk.leverage;
-    return notional / price;
-  }
-  function pct(a,b){ return ((a-b)/b)*100; }
-  const fmt2 = (x)=> (Math.round(x*100)/100).toFixed(2);
+  },
 
-  // ----- Exchange adapters -----
-  async function fetchBinance(symbol, interval, limit=500){
+  // ====== DATA SOURCES ======
+  async fetchBinance(symbol, interval, limit=500){
     const url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const res = await fetch(url); if(!res.ok) throw new Error('binance fail');
     const data = await res.json();
     return data.map(k=>({t:k[0], o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5]}));
-  }
-  async function fetchBybit(symbol, interval, limit=500){
-    const map = { '1m':'1', '3m':'3', '5m':'5', '15m':'15', '30m':'30', '1h':'60', '2h':'120', '4h':'240', '6h':'360', '12h':'720', '1d':'D', '1w':'W'};
+  },
+  async fetchBybit(symbol, interval, limit=500){
+    const map = { '1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','6h':'360','12h':'720','1d':'D','1w':'W'};
     const iv = map[interval] || '15';
     const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=${iv}&limit=${Math.min(limit,1000)}`;
     const res = await fetch(url); if(!res.ok) throw new Error('bybit fail');
     const j = await res.json(); const arr = j.result?.list||[];
     return arr.reverse().map(k=>({t:+k[0], o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5]}));
-  }
-  async function fetchCC(symbol, interval, limit=400){
-    const fsym = symbol.replace(/USDT$/,''); const tsym = 'USDT';
+  },
+  async fetchCC(symbol, interval, limit=400){
+    const fsym = symbol.replace(/USDT$/,''); const tsym='USDT';
     const base='https://min-api.cryptocompare.com/data';
     const path = interval.endsWith('m')? 'histominute' : interval.endsWith('h')? 'histohour' : 'histoday';
-    const aggregate = parseInt(interval) || (interval==='1h'?1: (interval==='4h'?4:1));
+    const aggregate = parseInt(interval) || (interval==='1h'?1:(interval==='4h'?4:1));
     const url = `${base}/${path}?fsym=${fsym}&tsym=${tsym}&limit=${Math.min(limit,2000)}&aggregate=${aggregate}&e=CCCAGG`;
-    const headers = CONFIG.ccKey? { headers: { Authorization: `Apikey ${CONFIG.ccKey}` } } : {};
+    const headers = this.CONFIG.ccKey? { headers:{Authorization:`Apikey ${this.CONFIG.ccKey}`}} : {};
     const res = await fetch(url, headers); if(!res.ok) throw new Error('cc fail');
     const j = await res.json(); const arr = j.Data || j.Data?.Data || j.Data?.data || j.Data;
     return (arr||[]).map(k=>({t:(k.time)*1000, o:+k.open, h:+k.high, l:+k.low, c:+k.close, v:+k.volumefrom}));
-  }
-  async function getKlines(ex,sym,tf,limit){
-    if(ex==='binance') return fetchBinance(sym,tf,limit);
-    if(ex==='bybit')   return fetchBybit(sym,tf,limit);
-    return fetchCC(sym,tf,limit);
-  }
+  },
+  async getKlines(ex,sym,tf,limit){
+    if(ex==='binance') return this.fetchBinance(sym,tf,limit);
+    if(ex==='bybit')   return this.fetchBybit(sym,tf,limit);
+    return this.fetchCC(sym,tf,limit);
+  },
 
-  return { CONFIG, tfToMs, expiryBars, qtyFromNotional, pct, fmt2, getKlines };
-})();
+  // ====== INDICATORS ======
+  SMA(values, period){
+    const out=[]; let sum=0;
+    for(let i=0;i<values.length;i++){ sum+=values[i]; if(i>=period) sum-=values[i-period]; out.push(i>=period-1? sum/period : null); }
+    return out;
+  },
+  EMA(values, period){
+    const k=2/(period+1); const out=[]; let prev=null;
+    for(let i=0;i<values.length;i++){ const v=values[i]; prev = (prev===null? v : v*k + prev*(1-k)); out.push(prev); }
+    return out;
+  },
+  RSI(closes, period=14){
+    const rsis=Array(closes.length).fill(null);
+    let gains=0, losses=0;
+    for(let i=1;i<=period;i++){ const ch=closes[i]-closes[i-1]; gains+=Math.max(ch,0); losses+=Math.max(-ch,0); }
+    let avgG=gains/period, avgL=losses/period; rsis[period]=100 - 100/(1+ (avgL===0? 100: avgG/avgL));
+    for(let i=period+1;i<closes.length;i++){ const ch=closes[i]-closes[i-1]; const g=Math.max(ch,0), l=Math.max(-ch,0);
+      avgG=(avgG*(period-1)+g)/period; avgL=(avgL*(period-1)+l)/period;
+      const rs= avgL===0? 100: avgG/avgL; rsis[i]=100 - 100/(1+rs);
+    } return rsis;
+  },
+  Stoch(highs,lows,closes,p=14,sig=3){
+    const k=[]; for(let i=0;i<closes.length;i++){ const a=Math.max(0,i-p+1);
+      const hh=Math.max(...highs.slice(a,i+1)); const ll=Math.min(...lows.slice(a,i+1));
+      k[i]=(hh===ll)?50: ((closes[i]-ll)/(hh-ll))*100;
+    } const d=this.SMA(k, sig); return {k,d};
+  },
+  ATR(highs,lows,closes,period=14){
+    const tr=[null]; for(let i=1;i<closes.length;i++){ const hl=highs[i]-lows[i]; const hc=Math.abs(highs[i]-closes[i-1]); const lc=Math.abs(lows[i]-closes[i-1]); tr[i]=Math.max(hl,hc,lc); }
+    const a=this.SMA(tr.slice(1),period); a.unshift(null); return a;
+  },
+  swings(highs,lows,left=2,right=2){
+    const sh=[], sl=[]; for(let i=left;i<highs.length-right;i++){ let hi=true, lo=true;
+      for(let j=1;j<=left;j++){ if(highs[i]<=highs[i-j]) hi=false; if(lows[i]>=lows[i-j]) lo=false; }
+      for(let j=1;j<=right;j++){ if(highs[i]<=highs[i+j]) hi=false; if(lows[i]>=lows[i+j]) lo=false; }
+      sh[i]=hi?highs[i]:null; sl[i]=lo?lows[i]:null;
+    } return {sh,sl};
+  },
+  smcBasics(highs,lows,closes){
+    const {sh,sl}=this.swings(highs,lows,2,2);
+    const bosUp=Array(closes.length).fill(false), bosDn=Array(closes.length).fill(false);
+    let hi=null, lo=null;
+    for(let i=0;i<closes.length;i++){ if(sh[i]) hi=i; if(sl[i]) lo=i;
+      if(hi!=null && closes[i]>sh[hi]) bosUp[i]=true; if(lo!=null && closes[i]<sl[lo]) bosDn[i]=true;
+    }
+    // FVG 3-nến (đơn giản)
+    const fvgUp=[], fvgDn=[];
+    for(let i=2;i<closes.length;i++){ if(lows[i]>highs[i-2]) fvgUp.push({from:highs[i-2],to:lows[i],i}); if(highs[i]<lows[i-2]) fvgDn.push({from:highs[i],to:lows[i-2],i}); }
+    return {bosUp,bosDn,fvgUp,fvgDn,sh,sl};
+  },
+
+  qtyFromNotional(price){
+    const notional = this.CONFIG.risk.perTradeUSD * this.CONFIG.risk.leverage; // 100 x 25 = 2500
+    return notional / price;
+  }
+};
