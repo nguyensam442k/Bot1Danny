@@ -2,110 +2,120 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Signal Board — m15 (BTC/ETH)</title>
-  <link rel="stylesheet" href="./assets/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="assets/style.css" rel="stylesheet" />
 </head>
 <body>
-  <header>
-    <h1>Signal Board — m15 (BTC/ETH)</h1>
-    <button id="btnRefresh">Refresh</button>
-  </header>
+  <div class="wrap">
+    <header class="topbar">
+      <h1>Signal Board — m15 (BTC/ETH)</h1>
+      <div class="actions">
+        <button id="btnRefresh">Refresh</button>
+        <span id="lastUpdated" class="muted">Cập nhật: —</span>
+      </div>
+    </header>
 
-  <section class="note">
-    <p>
-      Ghi lệnh khi có tín hiệu; tính P&amp;L với vốn <b>100U × 25</b>, TP/SL theo ATR, Expiry 4h.
-      Lịch sử lưu cục bộ (localStorage).
+    <p class="note">
+      Ghi lệnh khi có tín hiệu (EMA9/EMA21 cross + SMC/ICT xác nhận, nến m15 đã đóng). 
+      TP/SL theo R: SL 1%, TP1 1R, TP2 1.5R, TP3 2R. Vốn 100U × 25, expiry 4h. 
+      Lịch sử lưu ở trình duyệt (localStorage). Không giới hạn số lệnh.
     </p>
-    <p id="lastUpdated">Cập nhật: —</p>
-  </section>
 
-  <section class="stats">
-    <h2>Tổng hợp thống kê (LIVE)</h2>
-    <table id="tblStats">
-      <thead>
-        <tr>
-          <th>Symbol</th><th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
-          <th>Win-rate</th><th>P&amp;L ($)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>BTC</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-        <tr><td>ETH</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-        <tr class="total"><td>TOTAL</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-      </tbody>
-    </table>
-  </section>
+    <section class="panel">
+      <h2>Tổng hợp thống kê (LIVE)</h2>
+      <table class="table stats" id="statsTable">
+        <thead>
+          <tr>
+            <th>Symbol</th><th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
+            <th>Win-rate</th><th>P&amp;L ($)</th>
+          </tr>
+        </thead>
+        <tbody id="statsBody">
+          <tr><td>BTC</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+          <tr><td>ETH</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+          <tr class="total"><td>TOTAL</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+        </tbody>
+      </table>
+    </section>
 
-  <section class="grid">
-    <!-- BTC CARD -->
-    <div class="card" id="card-BTC">
-      <div class="card-title">
-        <span class="sym">BTC</span>
-        <span class="badge">m15</span>
-        <span id="btcConf" class="badge hollow">Conf: —%</span>
+    <!-- BTC Card -->
+    <section class="panel">
+      <div class="card">
+        <div class="card-head">
+          <div class="symbol">BTC</div>
+          <div class="tf">m15</div>
+          <div class="conf"><span id="btcConf">Conf: —%</span></div>
+        </div>
+
+        <div class="row"><span>ENTRY</span><span id="btcEntry">—</span></div>
+        <div class="row"><span>CURRENT</span><span id="btcCurrent">—</span></div>
+        <div class="row"><span>TIME</span><span id="btcTime">—</span></div>
+        <div class="row"><span>P&amp;L %</span><span id="btcPnlPct">—</span></div>
+        <div class="row"><span>PROFIT (25x)</span><span id="btcProfit">—</span></div>
+        <div class="row"><span>STATUS</span><span id="btcStatus">No trade</span></div>
+
+        <div class="targets">
+          <div class="tbox"><span>▼ SL</span><span id="btcSL">—</span></div>
+          <div class="tbox"><span>🎯 TP1</span><span id="btcTP1">—</span></div>
+          <div class="tbox"><span>🎯 TP2</span><span id="btcTP2">—</span></div>
+          <div class="tbox"><span>🎯 TP3</span><span id="btcTP3">—</span></div>
+        </div>
+
+        <div class="row">
+          <button class="btn small" id="btcDetailsBtn">Details</button>
+        </div>
       </div>
-      <div class="kv"><span>ENTRY</span><b id="btcEntry">—</b></div>
-      <div class="kv"><span>CURRENT</span><b id="btcCurrent">—</b></div>
-      <div class="kv"><span>TIME</span><b id="btcTime">—</b></div>
-      <div class="kv"><span>P&amp;L %</span><b id="btcPnL">—</b></div>
-      <div class="kv"><span>PROFIT (25x)</span><b id="btcProfit">—</b></div>
-      <div class="kv"><span>STATUS</span><b id="btcStatus">No trade</b></div>
+    </section>
 
-      <div class="levels">
-        <div>▼ SL <b id="btcSL">—</b></div>
-        <div class="tp">🎯 TP1 <b id="btcTP1">—</b></div>
-        <div class="tp">🎯 TP2 <b id="btcTP2">—</b></div>
-        <div class="tp">🎯 TP3 <b id="btcTP3">—</b></div>
+    <!-- ETH Card -->
+    <section class="panel">
+      <div class="card">
+        <div class="card-head">
+          <div class="symbol">ETH</div>
+          <div class="tf">m15</div>
+          <div class="conf"><span id="ethConf">Conf: —%</span></div>
+        </div>
+
+        <div class="row"><span>ENTRY</span><span id="ethEntry">—</span></div>
+        <div class="row"><span>CURRENT</span><span id="ethCurrent">—</span></div>
+        <div class="row"><span>TIME</span><span id="ethTime">—</span></div>
+        <div class="row"><span>P&amp;L %</span><span id="ethPnlPct">—</span></div>
+        <div class="row"><span>PROFIT (25x)</span><span id="ethProfit">—</span></div>
+        <div class="row"><span>STATUS</span><span id="ethStatus">No trade</span></div>
+
+        <div class="targets">
+          <div class="tbox"><span>▼ SL</span><span id="ethSL">—</span></div>
+          <div class="tbox"><span>🎯 TP1</span><span id="ethTP1">—</span></div>
+          <div class="tbox"><span>🎯 TP2</span><span id="ethTP2">—</span></div>
+          <div class="tbox"><span>🎯 TP3</span><span id="ethTP3">—</span></div>
+        </div>
+
+        <div class="row">
+          <button class="btn small" id="ethDetailsBtn">Details</button>
+        </div>
       </div>
-      <button class="secondary" id="btcDetails">Details</button>
-    </div>
+    </section>
 
-    <!-- ETH CARD -->
-    <div class="card" id="card-ETH">
-      <div class="card-title">
-        <span class="sym">ETH</span>
-        <span class="badge">m15</span>
-        <span id="ethConf" class="badge hollow">Conf: —%</span>
-      </div>
-      <div class="kv"><span>ENTRY</span><b id="ethEntry">—</b></div>
-      <div class="kv"><span>CURRENT</span><b id="ethCurrent">—</b></div>
-      <div class="kv"><span>TIME</span><b id="ethTime">—</b></div>
-      <div class="kv"><span>P&amp;L %</span><b id="ethPnL">—</b></div>
-      <div class="kv"><span>PROFIT (25x)</span><b id="ethProfit">—</b></div>
-      <div class="kv"><span>STATUS</span><b id="ethStatus">No trade</b></div>
-
-      <div class="levels">
-        <div>▼ SL <b id="ethSL">—</b></div>
-        <div class="tp">🎯 TP1 <b id="ethTP1">—</b></div>
-        <div class="tp">🎯 TP2 <b id="ethTP2">—</b></div>
-        <div class="tp">🎯 TP3 <b id="ethTP3">—</b></div>
-      </div>
-      <button class="secondary" id="ethDetails">Details</button>
-    </div>
-  </section>
-
-  <section class="history">
-    <div class="hist-header">
+    <!-- Lịch sử -->
+    <section class="panel">
       <h2>Lịch sử lệnh</h2>
       <div class="actions">
         <button id="btnExport">Export CSV</button>
         <button id="btnClear">Xóa lịch sử (giữ lệnh ACTIVE)</button>
       </div>
-    </div>
-    <table id="tblHist">
-      <thead>
-        <tr>
-          <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th>
-          <th>TP</th><th>SL</th><th>Exit</th><th>Reason</th>
-          <th>Status</th><th>P&amp;L ($)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
+      <table class="table history" id="historyTable">
+        <thead>
+          <tr>
+            <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th><th>TP</th><th>SL</th>
+            <th>Exit</th><th>Reason</th><th>Status</th><th>P&amp;L ($)</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </section>
+  </div>
 
-  <script src="./js/chart.js"></script>
-  <script src="./js/ui.js"></script>
+  <script src="js/ui.js"></script>
 </body>
 </html>
