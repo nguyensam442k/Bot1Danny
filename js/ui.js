@@ -1,196 +1,245 @@
-/* ===== ui.js =====
- * Orchestrator: tải dữ liệu, chạy backtest nhanh, render UI, thống kê (LIVE)
- */
+/* ========= App config ========= */
+const SETTINGS = {
+  symbols: ['BTCUSDT', 'ETHUSDT'],
+  capitalUSD: 100,
+  leverage: 25,
+  expiryMinutes: 60 * 4,   // 4h -> 240m -> 16 nến m15
+  lsKey: 'm15_signals_live'
+};
 
-function lsGet(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
-  catch { return fallback; }
+function fmtUSD(x){ if(x===null||x===undefined||isNaN(x)) return '$—'; return '$'+Number(x).toFixed(2); }
+function fmtPct(x){ if(x===null||x===undefined||isNaN(x)) return '—'; const s=(x*100).toFixed(2)+'%'; return x>=0?`+${s}`:s; }
+function fmtTime(ms){ if(!ms) return '—'; const d=new Date(ms); return d.toLocaleString(); }
+
+/* ========= LocalStorage ========= */
+function loadStore(){
+  try{ return JSON.parse(localStorage.getItem(SETTINGS.lsKey)) || { trades:[] }; }
+  catch(e){ return { trades:[] }; }
 }
-function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function saveStore(s){ localStorage.setItem(SETTINGS.lsKey, JSON.stringify(s)); }
 
-function pnlUsd(entry, exit, dir) {
-  const rr = dir === 'BUY' ? (exit - entry) / entry : (entry - exit) / entry;
-  return APP_CONFIG.CAPITAL * APP_CONFIG.LEVERAGE * rr;
-}
-function winColor(v) { return v >= 0 ? '#2bd576' : '#ff5d5d'; }
-function fmtTs(ts) { const d = new Date(ts); return d.toLocaleString(); }
-
-function renderSkeleton() {
-  const el = document.getElementById('app');
-  el.innerHTML = `
-    <h1>${APP_CONFIG.TITLE}</h1>
-
-    <div class="box" id="box-summary">
-      <h3>Tổng hợp thống kê (LIVE)</h3>
-      <small>Ghi lệnh khi có tín hiệu; P&amp;L theo vốn 100U × 25, TP ${APP_CONFIG.TP_PCT*100}% / SL ${APP_CONFIG.SL_PCT*100}%, Expiry ${APP_CONFIG.EXPIRY_MINS} phút.</small>
-      <table id="tbl-summary" style="width:100%; margin-top:8px">
-        <thead><tr>
-          <th style="text-align:left">Symbol</th>
-          <th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
-          <th>Win-rate</th><th>P&amp;L ($)</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="box" id="box-signals">
-      <div id="sig-btc"></div>
-      <div id="sig-eth" style="margin-top:12px"></div>
-    </div>
-
-    <div class="box" id="box-history">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Lịch sử lệnh</h3>
-        <div>
-          <button id="btn-export">Export CSV</button>
-          <button id="btn-clear">Xóa lịch sử (giữ lệnh ACTIVE)</button>
-        </div>
-      </div>
-      <table id="tbl-history" style="width:100%;margin-top:8px">
-        <thead><tr>
-          <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th><th>TP</th><th>SL</th>
-          <th>Exit</th><th>Reason</th><th>Status</th><th>P&amp;L ($)</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  `;
+/* ========= PnL calculator ========= */
+function pnlUSD(dir, entry, exit){
+  const pct = (exit/entry - 1) * (dir==='BUY'?1:-1);
+  return SETTINGS.capitalUSD * SETTINGS.leverage * pct;
 }
 
-function rowSummaryHTML(sym, s) {
-  const winRate = s.trades ? (s.win / s.trades * 100).toFixed(1) + '%' : '0.0%';
-  return `<tr>
-    <td style="text-align:left">${sym}</td>
-    <td>${s.trades}</td><td>${s.win}</td><td>${s.loss}</td><td>${s.flat}</td>
-    <td>${winRate}</td>
-    <td style="color:${winColor(s.pnl)}">${s.pnl>=0?'+$':'-$'}${nf2.format(Math.abs(s.pnl))}</td>
-  </tr>`;
-}
-
-function renderSummary(stats) {
-  const tb = document.querySelector('#tbl-summary tbody');
-  tb.innerHTML = '';
-  let total = { trades:0, win:0, loss:0, flat:0, pnl:0 };
-  for (const [sym, s] of Object.entries(stats)) {
-    tb.insertAdjacentHTML('beforeend', rowSummaryHTML(sym, s));
-    total.trades += s.trades; total.win += s.win; total.loss += s.loss; total.flat += s.flat; total.pnl += s.pnl;
-  }
-  tb.insertAdjacentHTML('beforeend', rowSummaryHTML('TOTAL', total));
-}
-
-function signalCardHTML(title, info, lastPrice) {
-  if (!info) {
-    return `<div class="box">
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="padding:4px 8px;background:#0f2545;border-radius:6px">${title}</span>
-        <span style="padding:4px 8px;background:#0f2545;border-radius:6px">${APP_CONFIG.TIMEFRAME.label}</span>
-        <span style="margin-left:auto">Last: $${nf2.format(lastPrice)}</span>
-      </div>
-      <div style="margin-top:8px">Không có tín hiệu mới ở nến vừa đóng.</div>
-    </div>`;
-  }
-  const { dir, entry, tp, sl, time } = info;
-  const now = Date.now();
-  const minsLeft = Math.max(0, APP_CONFIG.EXPIRY_MINS - Math.floor((now - time) / 60000));
-  const pnl = pnlUsd(entry, lastPrice, dir);
-  return `<div class="box">
-    <div style="display:flex;gap:8px;align-items:center">
-      <span style="padding:4px 8px;background:#0f2545;border-radius:6px">${title}</span>
-      <span style="padding:4px 8px;background:#0f2545;border-radius:6px">${APP_CONFIG.TIMEFRAME.label}</span>
-      <span style="padding:4px 8px;background:#0f2545;border-radius:6px">${dir}</span>
-      <span style="margin-left:auto">Last: $${nf2.format(lastPrice)}</span>
-    </div>
-    <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap">
-      <div>ENTRY <b>$${nf2.format(entry)}</b></div>
-      <div>TP <b>$${nf2.format(tp)}</b></div>
-      <div>SL <b>$${nf2.format(sl)}</b></div>
-      <div>Time <b>${APP_CONFIG.TIMEFRAME.label}</b></div>
-      <div>P&amp;L <b style="color:${winColor(pnl)}">${pnl>=0?'+$':'-$'}${nf2.format(Math.abs(pnl))}</b></div>
-      <div style="margin-left:auto">⏳ còn <b>${minsLeft}</b> phút</div>
-    </div>
-  </div>`;
-}
-
-function renderSignals(cards) {
-  document.getElementById('sig-btc').innerHTML = cards.BTC;
-  document.getElementById('sig-eth').innerHTML = cards.ETH;
-}
-
-function renderHistory(rows) {
-  const tb = document.querySelector('#tbl-history tbody');
-  tb.innerHTML = rows.map(r => {
-    const pnl = pnlUsd(r.entry, r.exit, r.dir);
-    return `<tr>
-      <td>${fmtTs(r.time)}</td>
-      <td>${r.sym}</td>
-      <td>${r.dir}</td>
-      <td>$${nf2.format(r.entry)}</td>
-      <td>$${nf2.format(r.tp)}</td>
-      <td>$${nf2.format(r.sl)}</td>
-      <td>$${nf2.format(r.exit)}</td>
-      <td>${r.status === 'TP' ? 'TP hit' : r.status === 'SL' ? 'SL hit' : 'Expired'}</td>
-      <td>${r.status}</td>
-      <td style="color:${winColor(pnl)}">${pnl>=0?'+$':'-$'}${nf2.format(Math.abs(pnl))}</td>
-    </tr>`;
-  }).join('');
-}
-
-function exportCSV(rows) {
-  const headers = ['time','sym','dir','entry','tp','sl','exit','status'];
-  const lines = [headers.join(',')];
-  rows.forEach(r => {
-    lines.push([r.time, r.sym, r.dir, r.entry, r.tp, r.sl, r.exit, r.status].join(','));
-  });
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'history.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-async function main() {
-  renderSkeleton();
-
-  const stats = { BTC: { trades:0, win:0, loss:0, flat:0, pnl:0 }, ETH: { trades:0, win:0, loss:0, flat:0, pnl:0 } };
-  const history = [];
-
-  const cards = { BTC: '', ETH: '' };
-
-  for (const s of APP_CONFIG.SYMBOLS) {
-    const data = await TA.fetchCC({
-      fsym: s.fsym, tsym: s.tsym,
-      limit: APP_CONFIG.HISTORY_LIMIT,
-      aggregate: APP_CONFIG.TIMEFRAME.aggregate,
-    });
-
-    const bt = TA.backtestEMA(data, s);
-
-    // active card
-    cards[s.id] = signalCardHTML(s.id, bt.active[0], bt.last.price);
-
-    // closed orders -> update live stats + history
-    for (const o of bt.closed.slice(-50)) {
-      history.push(o);
-      const pnl = pnlUsd(o.entry, o.exit, o.dir);
-      const bucket = stats[s.id];
-      bucket.trades++;
-      if (o.status === 'TP') bucket.win++; else if (o.status === 'SL') bucket.loss++; else bucket.flat++;
-      bucket.pnl += pnl;
-    }
-  }
-
-  renderSignals(cards);
-  renderSummary(stats);
-  renderHistory(history);
-
-  // buttons
-  document.getElementById('btn-export').onclick = () => exportCSV(history);
-  document.getElementById('btn-clear').onclick = () => {
-    localStorage.removeItem(APP_CONFIG.STORAGE.HISTORY);
-    location.reload();
+/* ========= Trade objects ========= */
+function newTradeFromSignal(sig){
+  // id ensures uniqueness (sym + crossTime)
+  const id = `${sig.symbol}_${sig.crossTime}`;
+  return {
+    id, sym: sig.symbol.slice(0,3),
+    dir: sig.dir, entry: sig.entry, tp1: sig.tp1, tp2: sig.tp2, tp3: sig.tp3, sl: sig.sl,
+    openedAt: sig.crossTime, ttlMin: SETTINGS.expiryMinutes, // remaining lifetime
+    status: 'ACTIVE', exit: null, reason: '', pnl: 0
   };
 }
 
-document.addEventListener('DOMContentLoaded', main);
+/* ========= Strategy runner ========= */
+function processActiveTrades(store, prices) {
+  // prices: { BTC: {last, time}, ETH: {...} }
+  const now = Date.now();
+  for(const t of store.trades) {
+    if(t.status !== 'ACTIVE') continue;
+    const p = prices[t.sym]?.last;
+    if(!p) continue;
+
+    // hit SL?
+    if(t.dir==='BUY' && p <= t.sl) { t.status='SL'; t.exit=p; t.reason='SL'; t.pnl=pnlUSD(t.dir, t.entry, t.exit); continue; }
+    if(t.dir==='SELL'&& p >= t.sl) { t.status='SL'; t.exit=p; t.reason='SL'; t.pnl=pnlUSD(t.dir, t.entry, t.exit); continue; }
+
+    // hit TP (use the nearest TP1)
+    if(t.dir==='BUY' && p >= t.tp1){ t.status='TP'; t.exit=p; t.reason='TP1'; t.pnl=pnlUSD(t.dir, t.entry, t.exit); continue; }
+    if(t.dir==='SELL'&& p <= t.tp1){ t.status='TP'; t.exit=p; t.reason='TP1'; t.pnl=pnlUSD(t.dir, t.entry, t.exit); continue; }
+
+    // expiry
+    const mins = Math.floor((now - t.openedAt)/60000);
+    t.ttlMin = Math.max(0, SETTINGS.expiryMinutes - mins);
+    if(mins >= SETTINGS.expiryMinutes){
+      t.status='FLAT'; t.exit=p; t.reason='EXP'; t.pnl=pnlUSD(t.dir, t.entry, t.exit);
+    }
+  }
+}
+
+/* ========= Stats ========= */
+function calcStats(store) {
+  const by = { BTC:{trd:0,win:0,loss:0,flat:0,pnl:0}, ETH:{trd:0,win:0,loss:0,flat:0,pnl:0} };
+  for(const t of store.trades) {
+    if(t.status==='ACTIVE') continue;
+    const b = by[t.sym];
+    b.trd++;
+    if(t.status==='TP') b.win++;
+    else if(t.status==='SL') b.loss++;
+    else b.flat++;
+    b.pnl += t.pnl;
+  }
+  const tot = {
+    trd:by.BTC.trd+by.ETH.trd,
+    win:by.BTC.win+by.ETH.win,
+    loss:by.BTC.loss+by.ETH.loss,
+    flat:by.BTC.flat+by.ETH.flat,
+    pnl:by.BTC.pnl+by.ETH.pnl
+  };
+  return { by, tot };
+}
+
+function drawStats(stats){
+  const map = { BTC:document.querySelector('tr[data-sym="BTC"]'),
+                ETH:document.querySelector('tr[data-sym="ETH"]'),
+                TOTAL:document.querySelector('tr[data-sym="TOTAL"]') };
+  function fillRow(tr, obj){
+    const cells = tr.querySelectorAll('td');
+    const wr = obj.trd>0 ? (obj.win/obj.trd*100).toFixed(1)+'%' : '0.0%';
+    cells[1].textContent = obj.trd;
+    cells[2].textContent = obj.win;
+    cells[3].textContent = obj.loss;
+    cells[4].textContent = obj.flat;
+    cells[5].textContent = wr;
+    cells[6].textContent = fmtUSD(obj.pnl);
+  }
+  fillRow(map.BTC, stats.by.BTC);
+  fillRow(map.ETH, stats.by.ETH);
+  fillRow(map.TOTAL, stats.tot);
+}
+
+/* ========= History table ========= */
+function drawHistory(store){
+  const tb = document.getElementById('histBody');
+  tb.innerHTML = '';
+  const rows = [...store.trades].sort((a,b)=>b.openedAt-a.openedAt);
+  for(const t of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtTime(t.openedAt)}</td>
+      <td>${t.sym}</td>
+      <td>${t.dir}</td>
+      <td>${t.entry?.toFixed(2)??'—'}</td>
+      <td>${t.tp1?.toFixed(2)??'—'}</td>
+      <td>${t.sl?.toFixed(2)??'—'}</td>
+      <td>${t.exit? t.exit.toFixed(2):'—'}</td>
+      <td>${t.reason||''}</td>
+      <td>${t.status}</td>
+      <td class="${t.pnl>=0?'pos':'neg'}">${fmtUSD(t.pnl)}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
+
+/* ========= One card (UI) ========= */
+function updateCard(sym, lastClose, lastTime, active){
+  const lower = sym.toLowerCase();
+  document.getElementById(`${lower}Last`).textContent   = `${sym} m15 Last: ${lastClose?.toFixed(2)??'—'}`;
+  document.getElementById(`${lower}Current`).textContent = lastClose?.toFixed(2) ?? '—';
+  document.getElementById(`${lower}Time`).textContent    = fmtTime(lastTime);
+
+  const badge = document.getElementById(`${lower}StatusBadge`);
+  const stxt  = document.getElementById(`${lower}StatusTxt`);
+  const pnlEl = document.getElementById(`${lower}PnlPct`);
+  const prfEl = document.getElementById(`${lower}Profit`);
+  const entEl = document.getElementById(`${lower}Entry`);
+  const slEl  = document.getElementById(`${lower}SL`);
+  const t1El  = document.getElementById(`${lower}TP1`);
+  const t2El  = document.getElementById(`${lower}TP2`);
+  const t3El  = document.getElementById(`${lower}TP3`);
+
+  if(!active){
+    badge.textContent='No trade'; badge.className='badge gray';
+    stxt.textContent='No trade';
+    pnlEl.textContent='—'; prfEl.textContent='$—'; entEl.textContent='—';
+    slEl.textContent='—'; t1El.textContent='—'; t2El.textContent='—'; t3El.textContent='—';
+    return;
+  }
+  const pnlPct = (lastClose/active.entry-1)*(active.dir==='BUY'?1:-1);
+  const pnlUsd = pnlUSD(active.dir, active.entry, lastClose);
+
+  entEl.textContent = active.entry.toFixed(2);
+  pnlEl.textContent = (pnlPct*100).toFixed(2)+'%';
+  pnlEl.className = pnlPct>=0?'pos':'neg';
+  prfEl.textContent = fmtUSD(pnlUsd);
+  stxt.textContent = `${active.status} (${active.dir})`;
+  badge.textContent = 'ACTIVE';
+  badge.className   = 'badge';
+
+  slEl.textContent = active.sl.toFixed(2);
+  t1El.textContent = active.tp1.toFixed(2);
+  t2El.textContent = active.tp2.toFixed(2);
+  t3El.textContent = active.tp3.toFixed(2);
+}
+
+/* ========= Export CSV ========= */
+function exportCSV(store){
+  const rows = [['time','sym','dir','entry','tp1','sl','exit','reason','status','pnl']];
+  for(const t of store.trades){
+    rows.push([new Date(t.openedAt).toISOString(), t.sym, t.dir, t.entry, t.tp1, t.sl, t.exit||'', t.reason||'', t.status, t.pnl]);
+  }
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'signals.csv';
+  a.click();
+}
+
+/* ========= Main flow ========= */
+async function refresh() {
+  const store = loadStore();
+
+  // fetch hist for symbols
+  const data = {};
+  for(const s of SETTINGS.symbols){
+    const hist = await window.Indicators.fetchHist(s);
+    const sig  = window.Indicators.generateSignal(hist, s);
+    data[s.slice(0,3)] = sig; // BTC / ETH
+
+    // if a new cross -> open trade (avoid duplicates)
+    if(sig.dir){
+      const id = `${sig.symbol}_${sig.crossTime}`;
+      if(!store.trades.some(t=>t.id===id)) {
+        store.trades.unshift(newTradeFromSignal(sig));
+      }
+    }
+  }
+
+  // process ACTIVE trades by latest price (sig.lastClose of live candle)
+  const prices = {
+    BTC:{last:data.BTC.lastClose, time:data.BTC.lastTime},
+    ETH:{last:data.ETH.lastClose, time:data.ETH.lastTime}
+  };
+  processActiveTrades(store, prices);
+  saveStore(store);
+
+  // draw cards — pick ACTIVE trade (latest by open time) for each symbol
+  function pickActive(sym){
+    return store.trades
+      .filter(t=>t.sym===sym && t.status==='ACTIVE')
+      .sort((a,b)=>b.openedAt-a.openedAt)[0] || null;
+  }
+  updateCard('BTC', data.BTC.lastClose, data.BTC.lastTime, pickActive('BTC'));
+  updateCard('ETH', data.ETH.lastClose, data.ETH.lastTime, pickActive('ETH'));
+
+  // stats + history
+  drawStats(calcStats(store));
+  drawHistory(store);
+
+  document.getElementById('lastUpdated').textContent = 'Cập nhật: ' + new Date().toLocaleString();
+}
+
+/* ========= UI events ========= */
+document.getElementById('btnRefresh').addEventListener('click', refresh);
+document.getElementById('btnExport').addEventListener('click', ()=>exportCSV(loadStore()));
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  const s = loadStore(); s.trades = s.trades.filter(t=>t.status==='ACTIVE'); saveStore(s); refresh();
+});
+document.querySelectorAll('button[data-details]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const sym = b.dataset.details;
+    const s = loadStore();
+    const active = s.trades.filter(t=>t.sym===sym && t.status==='ACTIVE').sort((a,b)=>b.openedAt-a.openedAt)[0];
+    if(!active){ alert('Không có lệnh ACTIVE.'); return; }
+    alert(`${sym} • ${active.dir}\nEntry ${active.entry}\nTP1 ${active.tp1}\nSL ${active.sl}\nMins left: ${active.ttlMin}`);
+  });
+});
+
+/* ========= First load ========= */
+refresh();
