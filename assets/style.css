@@ -1,44 +1,25 @@
 :root {
-  --bg:#0f1720;
-  --fg:#eaeef5;
-  --muted:#8aa0b5;
-  --card:#141c27;
-  --accent:#38bdf8;
-  --green:#34d399;
-  --red:#fb7185;
-  --yellow:#fbbf24;
+  --bg:#0f1720; --panel:#131c28; --muted:#98a2b3; --text:#e6edf3;
+  --line:#223043; --pos:#00e09f; --neg:#ff4d6d; --accent:#1f6feb;
 }
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-h1,h2{margin:0 0 8px}
-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #263241}
-header h1{font-size:20px}
-button{background:var(--accent);border:0;color:#06202b;padding:8px 14px;border-radius:8px;cursor:pointer}
-button.secondary{background:#1f2937;color:#cdd6e4;border:1px solid #334155}
-button:disabled{opacity:.6;cursor:not-allowed}
-
-.note,.stats,.history{padding:16px 20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:0 20px 20px}
-.card{background:var(--card);border:1px solid #243142;border-radius:12px;padding:14px}
-.card-title{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.card .sym{font-weight:700}
-.badge{background:#0e2430;border:1px solid #2a4152;color:#9fd1ea;border-radius:999px;padding:4px 8px;font-size:12px}
-.badge.hollow{background:transparent}
-
-.kv{display:flex;justify-content:space-between;border-bottom:1px dashed #273647;padding:6px 0}
-.levels{margin:8px 0 10px;display:grid;gap:4px}
-.levels .tp{color:var(--yellow)}
-#btcProfit,#ethProfit{color:var(--green)}
-#btcPnL.neg,#ethPnL.neg,#btcProfit.neg,#ethProfit.neg{color:var(--red)!important}
-
-table{width:100%;border-collapse:collapse}
-table thead th{color:#a6bdd4;font-weight:600;text-align:left;border-bottom:1px solid #273647;padding:8px}
-table tbody td{padding:8px;border-bottom:1px solid #1f2a36;color:#d8e4f0}
-table tbody tr.total td{font-weight:700}
-
-.hist-header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 0}
-.actions button{margin-left:8px}
-
-@media (max-width:640px){
-  header{flex-direction:column;gap:10px;align-items:flex-start}
-}
+*{box-sizing:border-box} body{margin:0;font:15px/1.5 system-ui,Segoe UI,Roboto;color:var(--text);background:var(--bg)}
+.wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.topbar h1{margin:0;font-size:22px}
+.actions{display:flex;gap:10px;align-items:center}
+.muted{color:var(--muted)}
+.note{color:var(--muted);margin:10px 0 18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}
+.table .total td{font-weight:600}
+.card{display:block}
+.card-head{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.card .symbol{font-weight:700}
+.card .tf{padding:2px 8px;border-radius:99px;background:#1d2d42}
+.card .row{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:8px 0}
+.targets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.tbox{background:#0f1a2a;border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;justify-content:space-between}
+.btn{background:var(--accent);border:0;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn.small{padding:6px 10px;font-size:13px}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
