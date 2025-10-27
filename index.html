@@ -1,55 +1,79 @@
-<!doctype html>
-<html lang="vi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title id="title">Signal Board</title>
+  <title>Signals — 100U × 25 (TP1/2/3)</title>
   <link rel="stylesheet" href="./assets/style.css" />
-  <style>
-    :root { --bg:#0e151b; --card:#0f1e29; --text:#d6e1ea; --muted:#9fb2c1;
-            --buy:#16a34a; --sell:#ef4444; --none:#64748b; --line:#1f2a35; }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
-    header{display:flex;justify-content:space-between;align-items:center;padding:16px 16px;border-bottom:1px solid var(--line)}
-    header .meta{color:var(--muted);font-size:13px}
-    .container{max-width:1080px;margin:0 auto;padding:16px}
-    .note{color:var(--muted);margin:8px 0 16px}
-    button{background:#1d3a4d;border:1px solid #24485f;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
-    #symbols{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:10px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .card__head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .card__title{font-weight:600;font-size:16px}
-    .card .tf{color:var(--muted);font-size:12px;margin-left:6px}
-    .badge{border-radius:999px;padding:2px 8px;font-weight:600;font-size:12px}
-    .badge.buy{background:rgba(22,163,74,.15);color:#34d399}
-    .badge.sell{background:rgba(239,68,68,.15);color:#f87171}
-    .badge.none{background:rgba(100,116,139,.2);color:#cbd5e1}
-    .conf{color:var(--muted);font-size:12px;margin-left:6px}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
-    .grid label{display:block;color:var(--muted);font-size:12px}
-    .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
-    .lv{background:#112532;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-    .lv span{color:var(--muted);font-size:12px;display:block}
-    .lv b{font-size:14px}
-    .error{color:#f87171}
-    @media (max-width:720px){ .grid,.levels{grid-template-columns:repeat(2,1fr)} }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header>
-    <div>
-      <div style="font-weight:700">Signal Board</div>
-      <div class="meta">Cập nhật: <span id="updated">—</span></div>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">TB</div>
+      <div class="brand-text">
+        <div class="title">TITAN-STYLE</div>
+        <div class="subtitle">Signals (Demo)</div>
+      </div>
     </div>
-    <div>
-      <button id="btnRefresh">Refresh</button>
+    <nav>
+      <a class="active">Signals</a>
+      <a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <div class="bar">
+      <div class="inputs">
+        <label>Exchange
+          <select id="exSel">
+            <option value="binance" selected>binance</option>
+            <option value="bybit">bybit</option>
+            <option value="cryptocompare">cryptocompare</option>
+          </select>
+        </label>
+        <label>Symbol
+          <select id="symSel">
+            <option>BTCUSDT</option>
+            <option selected>BNBUSDT</option>
+            <option>ETHUSDT</option>
+            <option>SOLUSDT</option>
+          </select>
+        </label>
+        <label>TF
+          <select id="tfSel">
+            <option>15m</option>
+            <option selected>1h</option>
+            <option>4h</option>
+          </select>
+        </label>
+        <button id="refreshBtn">Refresh</button>
+        <button id="autoBtn">Auto: OFF</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Active</div><div id="activeCount" class="v">0</div></div>
+        <div class="stat"><div class="k">Done</div><div id="doneCount" class="v">0</div></div>
+        <div class="stat"><div class="k">Buy</div><div id="buyCount" class="v">0</div></div>
+        <div class="stat"><div class="k">Sell</div><div id="sellCount" class="v">0</div></div>
+        <div class="stat"><div class="k">WR</div><div id="wr" class="v">0%</div></div>
+      </div>
     </div>
-  </header>
 
-  <div class="container">
-    <div class="note" id="note"></div>
-    <div id="symbols"></div>
-  </div>
+    <div class="notice">
+      <b>Signal Expiration:</b> nếu trong khung thời gian không chạm TP/SL thì hết hạn.<br/>
+      <b>Trade Duration:</b> đạt <b>TP1</b> coi là win; phần còn lại có thể chạy tiếp tới TP2/TP3.<br/>
+      Nguyên tắc: <i>Cắt lỗ sớm</i> (SL/expiration), và <i>để thắng chạy</i> (sau khi chạm TP).
+    </div>
 
-  <script type="module" src="./js/ui.js"></script>
+    <section id="cards" class="cards"></section>
+
+    <footer class="foot">Demo — dữ liệu từ public endpoints. Không phải lời khuyên đầu tư.</footer>
+  </main>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/chart.js"></script>
+  <script src="./js/ui.js"></script>
 </body>
 </html>
