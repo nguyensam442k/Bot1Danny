@@ -2,120 +2,54 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Signal Board — m15 (BTC/ETH)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="assets/style.css" rel="stylesheet" />
+  <title id="title">Signal Board</title>
+  <link rel="stylesheet" href="./assets/style.css" />
+  <style>
+    :root { --bg:#0e151b; --card:#0f1e29; --text:#d6e1ea; --muted:#9fb2c1;
+            --buy:#16a34a; --sell:#ef4444; --none:#64748b; --line:#1f2a35; }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
+    header{display:flex;justify-content:space-between;align-items:center;padding:16px 16px;border-bottom:1px solid var(--line)}
+    header .meta{color:var(--muted);font-size:13px}
+    .container{max-width:1080px;margin:0 auto;padding:16px}
+    .note{color:var(--muted);margin:8px 0 16px}
+    button{background:#1d3a4d;border:1px solid #24485f;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+    #symbols{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:10px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .card__head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .card__title{font-weight:600;font-size:16px}
+    .card .tf{color:var(--muted);font-size:12px;margin-left:6px}
+    .badge{border-radius:999px;padding:2px 8px;font-weight:600;font-size:12px}
+    .badge.buy{background:rgba(22,163,74,.15);color:#34d399}
+    .badge.sell{background:rgba(239,68,68,.15);color:#f87171}
+    .badge.none{background:rgba(100,116,139,.2);color:#cbd5e1}
+    .conf{color:var(--muted);font-size:12px;margin-left:6px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+    .grid label{display:block;color:var(--muted);font-size:12px}
+    .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+    .lv{background:#112532;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+    .lv span{color:var(--muted);font-size:12px;display:block}
+    .lv b{font-size:14px}
+    .error{color:#f87171}
+    @media (max-width:720px){ .grid,.levels{grid-template-columns:repeat(2,1fr)} }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="topbar">
-      <h1>Signal Board — m15 (BTC/ETH)</h1>
-      <div class="actions">
-        <button id="btnRefresh">Refresh</button>
-        <span id="lastUpdated" class="muted">Cập nhật: —</span>
-      </div>
-    </header>
+  <header>
+    <div>
+      <div style="font-weight:700">Signal Board</div>
+      <div class="meta">Cập nhật: <span id="updated">—</span></div>
+    </div>
+    <div>
+      <button id="btnRefresh">Refresh</button>
+    </div>
+  </header>
 
-    <p class="note">
-      Ghi lệnh khi có tín hiệu (EMA9/EMA21 cross + SMC/ICT xác nhận, nến m15 đã đóng). 
-      TP/SL theo R: SL 1%, TP1 1R, TP2 1.5R, TP3 2R. Vốn 100U × 25, expiry 4h. 
-      Lịch sử lưu ở trình duyệt (localStorage). Không giới hạn số lệnh.
-    </p>
-
-    <section class="panel">
-      <h2>Tổng hợp thống kê (LIVE)</h2>
-      <table class="table stats" id="statsTable">
-        <thead>
-          <tr>
-            <th>Symbol</th><th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
-            <th>Win-rate</th><th>P&amp;L ($)</th>
-          </tr>
-        </thead>
-        <tbody id="statsBody">
-          <tr><td>BTC</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-          <tr><td>ETH</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-          <tr class="total"><td>TOTAL</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- BTC Card -->
-    <section class="panel">
-      <div class="card">
-        <div class="card-head">
-          <div class="symbol">BTC</div>
-          <div class="tf">m15</div>
-          <div class="conf"><span id="btcConf">Conf: —%</span></div>
-        </div>
-
-        <div class="row"><span>ENTRY</span><span id="btcEntry">—</span></div>
-        <div class="row"><span>CURRENT</span><span id="btcCurrent">—</span></div>
-        <div class="row"><span>TIME</span><span id="btcTime">—</span></div>
-        <div class="row"><span>P&amp;L %</span><span id="btcPnlPct">—</span></div>
-        <div class="row"><span>PROFIT (25x)</span><span id="btcProfit">—</span></div>
-        <div class="row"><span>STATUS</span><span id="btcStatus">No trade</span></div>
-
-        <div class="targets">
-          <div class="tbox"><span>▼ SL</span><span id="btcSL">—</span></div>
-          <div class="tbox"><span>🎯 TP1</span><span id="btcTP1">—</span></div>
-          <div class="tbox"><span>🎯 TP2</span><span id="btcTP2">—</span></div>
-          <div class="tbox"><span>🎯 TP3</span><span id="btcTP3">—</span></div>
-        </div>
-
-        <div class="row">
-          <button class="btn small" id="btcDetailsBtn">Details</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ETH Card -->
-    <section class="panel">
-      <div class="card">
-        <div class="card-head">
-          <div class="symbol">ETH</div>
-          <div class="tf">m15</div>
-          <div class="conf"><span id="ethConf">Conf: —%</span></div>
-        </div>
-
-        <div class="row"><span>ENTRY</span><span id="ethEntry">—</span></div>
-        <div class="row"><span>CURRENT</span><span id="ethCurrent">—</span></div>
-        <div class="row"><span>TIME</span><span id="ethTime">—</span></div>
-        <div class="row"><span>P&amp;L %</span><span id="ethPnlPct">—</span></div>
-        <div class="row"><span>PROFIT (25x)</span><span id="ethProfit">—</span></div>
-        <div class="row"><span>STATUS</span><span id="ethStatus">No trade</span></div>
-
-        <div class="targets">
-          <div class="tbox"><span>▼ SL</span><span id="ethSL">—</span></div>
-          <div class="tbox"><span>🎯 TP1</span><span id="ethTP1">—</span></div>
-          <div class="tbox"><span>🎯 TP2</span><span id="ethTP2">—</span></div>
-          <div class="tbox"><span>🎯 TP3</span><span id="ethTP3">—</span></div>
-        </div>
-
-        <div class="row">
-          <button class="btn small" id="ethDetailsBtn">Details</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Lịch sử -->
-    <section class="panel">
-      <h2>Lịch sử lệnh</h2>
-      <div class="actions">
-        <button id="btnExport">Export CSV</button>
-        <button id="btnClear">Xóa lịch sử (giữ lệnh ACTIVE)</button>
-      </div>
-      <table class="table history" id="historyTable">
-        <thead>
-          <tr>
-            <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th><th>TP</th><th>SL</th>
-            <th>Exit</th><th>Reason</th><th>Status</th><th>P&amp;L ($)</th>
-          </tr>
-        </thead>
-        <tbody id="historyBody"></tbody>
-      </table>
-    </section>
+  <div class="container">
+    <div class="note" id="note"></div>
+    <div id="symbols"></div>
   </div>
 
-  <script src="js/ui.js"></script>
+  <script type="module" src="./js/ui.js"></script>
 </body>
 </html>
