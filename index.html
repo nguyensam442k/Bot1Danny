@@ -2,117 +2,110 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Signal Board — m15 (BTC/ETH)</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
-  <h1>Signal Board — m15 (BTC/ETH)</h1>
-
-  <div class="top-actions">
+  <header>
+    <h1>Signal Board — m15 (BTC/ETH)</h1>
     <button id="btnRefresh">Refresh</button>
-    <span id="lastUpdated" class="muted"></span>
-  </div>
+  </header>
 
-  <h2>Tổng hợp thống kê (LIVE)</h2>
-  <p class="muted">
-    Ghi lệnh khi có tín hiệu; tính P&amp;L với vốn 100U × 25, TP/SL/Expiry 4h. Lịch sử lưu ở trình duyệt (localStorage).
-  </p>
+  <section class="note">
+    <p>
+      Ghi lệnh khi có tín hiệu; tính P&amp;L với vốn <b>100U × 25</b>, TP/SL theo ATR, Expiry 4h.
+      Lịch sử lưu cục bộ (localStorage).
+    </p>
+    <p id="lastUpdated">Cập nhật: —</p>
+  </section>
 
-  <table class="table stats">
-    <thead>
-      <tr>
-        <th>Symbol</th><th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
-        <th>Win-rate</th><th>P&amp;L ($)</th>
-      </tr>
-    </thead>
-    <tbody id="statsBody">
-      <tr data-sym="BTC"><td>BTC</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-      <tr data-sym="ETH"><td>ETH</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-      <tr data-sym="TOTAL"><td>TOTAL</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
-    </tbody>
-  </table>
+  <section class="stats">
+    <h2>Tổng hợp thống kê (LIVE)</h2>
+    <table id="tblStats">
+      <thead>
+        <tr>
+          <th>Symbol</th><th>Trades</th><th>Win</th><th>Loss</th><th>Flat</th>
+          <th>Win-rate</th><th>P&amp;L ($)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>BTC</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+        <tr><td>ETH</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+        <tr class="total"><td>TOTAL</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0%</td><td>$0.00</td></tr>
+      </tbody>
+    </table>
+  </section>
 
-  <!-- BTC Card -->
-  <div class="card" id="cardBTC">
-    <div class="card-title">
-      <span class="badge">BTC</span>
-      <span class="badge hollow">m15</span>
-      <span id="btcStatusBadge" class="badge gray">No trade</span>
-      <span class="muted" id="btcLast">BTC m15 Last: —</span>
-    </div>
-
-    <div class="grid2">
-      <div>
-        <div class="kv"><span>ENTRY</span><strong id="btcEntry">—</strong></div>
-        <div class="kv"><span>CURRENT</span><strong id="btcCurrent">—</strong></div>
-        <div class="kv"><span>TIME</span><strong id="btcTime">—</strong></div>
+  <section class="grid">
+    <!-- BTC CARD -->
+    <div class="card" id="card-BTC">
+      <div class="card-title">
+        <span class="sym">BTC</span>
+        <span class="badge">m15</span>
+        <span id="btcConf" class="badge hollow">Conf: —%</span>
       </div>
-      <div>
-        <div class="kv"><span>P&amp;L %</span><strong id="btcPnlPct">—</strong></div>
-        <div class="kv"><span>PROFIT (25x)</span><strong id="btcProfit">$—</strong></div>
-        <div class="kv"><span>STATUS</span><strong id="btcStatusTxt">No trade</strong></div>
+      <div class="kv"><span>ENTRY</span><b id="btcEntry">—</b></div>
+      <div class="kv"><span>CURRENT</span><b id="btcCurrent">—</b></div>
+      <div class="kv"><span>TIME</span><b id="btcTime">—</b></div>
+      <div class="kv"><span>P&amp;L %</span><b id="btcPnL">—</b></div>
+      <div class="kv"><span>PROFIT (25x)</span><b id="btcProfit">—</b></div>
+      <div class="kv"><span>STATUS</span><b id="btcStatus">No trade</b></div>
+
+      <div class="levels">
+        <div>▼ SL <b id="btcSL">—</b></div>
+        <div class="tp">🎯 TP1 <b id="btcTP1">—</b></div>
+        <div class="tp">🎯 TP2 <b id="btcTP2">—</b></div>
+        <div class="tp">🎯 TP3 <b id="btcTP3">—</b></div>
+      </div>
+      <button class="secondary" id="btcDetails">Details</button>
+    </div>
+
+    <!-- ETH CARD -->
+    <div class="card" id="card-ETH">
+      <div class="card-title">
+        <span class="sym">ETH</span>
+        <span class="badge">m15</span>
+        <span id="ethConf" class="badge hollow">Conf: —%</span>
+      </div>
+      <div class="kv"><span>ENTRY</span><b id="ethEntry">—</b></div>
+      <div class="kv"><span>CURRENT</span><b id="ethCurrent">—</b></div>
+      <div class="kv"><span>TIME</span><b id="ethTime">—</b></div>
+      <div class="kv"><span>P&amp;L %</span><b id="ethPnL">—</b></div>
+      <div class="kv"><span>PROFIT (25x)</span><b id="ethProfit">—</b></div>
+      <div class="kv"><span>STATUS</span><b id="ethStatus">No trade</b></div>
+
+      <div class="levels">
+        <div>▼ SL <b id="ethSL">—</b></div>
+        <div class="tp">🎯 TP1 <b id="ethTP1">—</b></div>
+        <div class="tp">🎯 TP2 <b id="ethTP2">—</b></div>
+        <div class="tp">🎯 TP3 <b id="ethTP3">—</b></div>
+      </div>
+      <button class="secondary" id="ethDetails">Details</button>
+    </div>
+  </section>
+
+  <section class="history">
+    <div class="hist-header">
+      <h2>Lịch sử lệnh</h2>
+      <div class="actions">
+        <button id="btnExport">Export CSV</button>
+        <button id="btnClear">Xóa lịch sử (giữ lệnh ACTIVE)</button>
       </div>
     </div>
+    <table id="tblHist">
+      <thead>
+        <tr>
+          <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th>
+          <th>TP</th><th>SL</th><th>Exit</th><th>Reason</th>
+          <th>Status</th><th>P&amp;L ($)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
 
-    <div class="levels">
-      <div>🔻 SL <span id="btcSL">—</span></div>
-      <div>🎯 TP1 • <span id="btcTP1">—</span></div>
-      <div>🎯 TP2 • <span id="btcTP2">—</span></div>
-      <div>🎯 TP3 • <span id="btcTP3">—</span></div>
-    </div>
-
-    <button class="btn-link" data-details="BTC">Details</button>
-  </div>
-
-  <!-- ETH Card -->
-  <div class="card" id="cardETH">
-    <div class="card-title">
-      <span class="badge">ETH</span>
-      <span class="badge hollow">m15</span>
-      <span id="ethStatusBadge" class="badge gray">No trade</span>
-      <span class="muted" id="ethLast">ETH m15 Last: —</span>
-    </div>
-
-    <div class="grid2">
-      <div>
-        <div class="kv"><span>ENTRY</span><strong id="ethEntry">—</strong></div>
-        <div class="kv"><span>CURRENT</span><strong id="ethCurrent">—</strong></div>
-        <div class="kv"><span>TIME</span><strong id="ethTime">—</strong></div>
-      </div>
-      <div>
-        <div class="kv"><span>P&amp;L %</span><strong id="ethPnlPct">—</strong></div>
-        <div class="kv"><span>PROFIT (25x)</span><strong id="ethProfit">$—</strong></div>
-        <div class="kv"><span>STATUS</span><strong id="ethStatusTxt">No trade</strong></div>
-      </div>
-    </div>
-
-    <div class="levels">
-      <div>🔻 SL <span id="ethSL">—</span></div>
-      <div>🎯 TP1 • <span id="ethTP1">—</span></div>
-      <div>🎯 TP2 • <span id="ethTP2">—</span></div>
-      <div>🎯 TP3 • <span id="ethTP3">—</span></div>
-    </div>
-
-    <button class="btn-link" data-details="ETH">Details</button>
-  </div>
-
-  <h2>Lịch sử lệnh</h2>
-  <div class="actions-row">
-    <button id="btnExport">Export CSV</button>
-    <button id="btnClear">Xoá lịch sử (giữ lệnh ACTIVE)</button>
-  </div>
-  <table class="table history">
-    <thead>
-      <tr>
-        <th>Time</th><th>Sym</th><th>Dir</th><th>Entry</th><th>TP</th><th>SL</th>
-        <th>Exit</th><th>Reason</th><th>Status</th><th>P&amp;L ($)</th>
-      </tr>
-    </thead>
-    <tbody id="histBody"></tbody>
-  </table>
-
-  <script src="js/chart.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="./js/chart.js"></script>
+  <script src="./js/ui.js"></script>
 </body>
 </html>
